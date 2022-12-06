@@ -35,35 +35,10 @@ import heapq
 from queue import PriorityQueue
 
 
-class Point(object):
-    def __init__(self, x, y):
-        self.X = x
-        self.Y = y
-
-    def __str__(self):
-        return "Point(%s,%s)" % (self.X, self.Y)
-
-    def getX(self):
-        return float(self.X)
-
-    def getY(self):
-        return float(self.Y)
-
-    def distance(self, p):
-        dx = p.getX() - self.getX()
-        dy = p.getY() - self.getY()
-        return math.hypot(dx, dy)
-
-    def midpoint(self, p):
-        x = (self.getX() + p.getX()) / 2
-        y = (self.getY() + p.getY()) / 2
-        return Point(x, y)
-
-
-class Parabola(object):
-    def __init__(self, direc, focus):
-        self.direc = direc
+class arc(object):
+    def __init__(self, focus, direc):
         self.focus = focus
+        self.direc = direc
 
     def direc(self):
       # y = y_0
@@ -123,6 +98,24 @@ class doubly_linked_list:
 #     # Delete any vertex event related to the arc q;
 #     # Add vertex events for ql and qr (described later);
 #     # Create a new Voronoi edge.
+def find_parabola_intersection(n1, n2):
+    # X coordinate of parabola intersection
+    first = n1.direct
+    second = n2.direct
+    # Use directix and current focus line to determine the x-coordinate intersection
+
+# def AddArc():
+    # adding an arc and updating pointers
+
+# def DelArc():
+    # deleting an arc and updating pointers
+
+
+def search(point, beachline):
+    p = point
+    n = beachline.root
+    while n.nextArc != None and find_parabola_intersection(n, n.right) < p[0]:
+        n = n.nextArc
 
 
 def main():
@@ -144,7 +137,7 @@ def main():
     for p in points:
         q.put((p[1], p))
     # while the event queue is not empty
-    linkedList = doubly_linked_list()
+    BeachLine = doubly_linked_list()
     while not q.empty():
         # pop the top event
         e = q.get()[1]
@@ -152,15 +145,23 @@ def main():
         # if the event is a site event
         if e in s:
             print("in")
-            # insert a new arc in the beachline
-            # check for new circle events
+            arc = arc(e)
+            BeachLine.insert(arc)
+            # Delete vertex event related to arc
+            # Add vertex events for ql and qr
+            # Create a new Voronoi edge.
         else:
             print("out")
+            # Delete the shrinking arc e from the beachline
+            # Create a new Voronoi vertex where the two edges intersect
+            # Add a new Voronoi edge starting from vertex just added
+            # Add vertex events for the arc p.left
+            # Add vertex events for the arc p.right
+
+
             # create a vertex in the diagram
             # remove the shrunk arc from the beachline
             # delete invalidated events
             # check for new circle events
-
-
 if __name__ == "__main__":
     main()
