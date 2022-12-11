@@ -1,5 +1,5 @@
 import heapq
-import itertools
+import math
 
 
 class ACTION:
@@ -56,26 +56,14 @@ class Segment:
 class PriorityQueue:
     def __init__(self):
         self.pq = []
-        self.entry_finder = {}
-        self.counter = itertools.count()
 
     def push(self, item):
-        # check for duplicate
-        if item in self.entry_finder:
-            return
-        count = next(self.counter)
-        # use x-coordinate as a primary key (heapq in python is min-heap)
-        entry = [item.x, count, item]
-        self.entry_finder[item] = entry
+        entry = [item.x, item]
         heapq.heappush(self.pq, entry)
 
     def pop(self):
-        while self.pq:
-            priority, count, item = heapq.heappop(self.pq)
-            if item != 'Removed':
-                del self.entry_finder[item]
-                return item
-        raise KeyError('pop from an empty priority queue')
+        priority, item = heapq.heappop(self.pq)
+        return item
 
     def empty(self):
         return not self.pq

@@ -1,5 +1,6 @@
 import sys
 import Fortune6
+import Fortune8
 import matplotlib.pyplot as plt
 
 
