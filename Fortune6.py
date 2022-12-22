@@ -87,7 +87,7 @@ class Voronoi:
         for pts in points:
             # tiny offset in case two points have the same x coordinate
             rand = 0.000001 * random.random()
-            point = Action(rand + pts[0], pts[1], 0.0, True)
+            point = Action(rand + pts[0], pts[1], None, True)
             self.points.push(point)
 
     def process(self):
@@ -171,7 +171,7 @@ class Voronoi:
             # insert new segment between p and i
             x = -10
             y = (curr.next.p.y + curr.p.y) / 2.0
-            first = Action(x, y, 0.0, True)
+            first = Action(x, y, None, True)
 
             seg = Line(first)
             curr.right = curr.next.left = seg
@@ -212,7 +212,7 @@ class Voronoi:
 
         # o.x plus radius equals max x coord
         x = center.x + a.distance(center)
-        o = Action(center.x, center.y, 0.0, True)
+        o = Action(center.x, center.y, None, True)
 
         return x, o
 
@@ -233,7 +233,7 @@ class Voronoi:
             py = p.y
             px = 1.0 * ((i.p.x)**2 + (i.p.y-py)**2 -
                         p.x**2) / (2*i.p.x - 2*p.x)
-            res = Action(px, py, 0.0, True)
+            res = Action(px, py, None, True)
             return True, res
         return False, None
 
@@ -260,7 +260,7 @@ class Voronoi:
             py = 1.0 * (-b-math.sqrt(b*b - 4*a*c)) / (2*a)
 
         px = 1.0 * (p.x**2 + (p.y-py)**2 - l**2) / (2*p.x-2*l)
-        res = Action(px, py, 0.0, True)
+        res = Action(px, py, None, True)
         return res
 
     def finish_edges(self):

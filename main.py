@@ -25,7 +25,7 @@ def main():
     for a in asdf:
         x_values = [a[0], a[2]]
         y_values = [a[1], a[3]]
-        plt.plot(x_values, y_values, 'bo', linestyle="--")
+        plt.plot(x_values, y_values, 'k-')
     plt.show()
     exit()
 
