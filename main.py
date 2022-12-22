@@ -14,11 +14,11 @@ def main():
             p = (float(arr[j]), float(arr[j + 1]))
             points.append(p)
     # Ty: Sorts by X coordinate in case same Y coordinate
-    points = sorted(points, key=lambda x: x[1])
+    # points = sorted(points, key=lambda x: x[1])
     for point in points:
         plt.plot(point[0], point[1], 'o')
     qwer = Fortune6.Voronoi(points)
-    qwer.process()
+    qwer.compute()
     plt.xlim([-10, 10])
     plt.ylim([-10, 10])
     for line in qwer.output:

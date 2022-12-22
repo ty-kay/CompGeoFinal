@@ -28,36 +28,26 @@ class Action:
 
 
 class BeachLine:
-    p = None
-    prior = None
-    next = None
-    e = None
-    left = None
-    right = None
-
-    def __init__(self, p, a, b):
+    def __init__(self, p, prior, next):
         self.p = p
-        self.prior = a
-        self.next = b
+        self.prior = prior
+        self.next = next
         self.e = None
         self.left = None
         self.right = None
 
     def remove(self, s):
-        a = self.e.directrix
-        if a.prior is not None:
-            a.prior.next = a.next
-            a.prior.right = s
-        if a.next is not None:
-            a.next.prior = a.prior
-            a.next.left = s
-        return a
+        curr = self.e.directrix
+        if curr.prior is not None:
+            curr.prior.next = curr.next
+            curr.prior.right = s
+        if curr.next is not None:
+            curr.next.prior = curr.prior
+            curr.next.left = s
+        return curr
 
 
 class Line:
-    first = None
-    second = None
-
     def __init__(self, p):
         self.first = p
         self.second = None
@@ -95,7 +85,7 @@ class Voronoi:
             point = Action(rand + pts[0], pts[1], None, True)
             self.points.push(point)
 
-    def process(self):
+    def compute(self):
         # Determine whether we are processing a point or an event
         while not self.points.empty():
             now = self.points.pop()
@@ -105,10 +95,10 @@ class Voronoi:
                 else:
                     self.arc_insert(now)
             else:
-                self.process_event(now)
+                self.event(now)
         self.finish_edges()
 
-    def process_event(self, e):
+    def event(self, e):
         if not e.process:
             return
 
@@ -201,7 +191,7 @@ class Voronoi:
     def CCW(self, a, b, c):
         return ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) >= 0
 
-    def findCenterHelp(self, a, b):
+    def findCenter(self, a, b):
         return b.deltaX(a) * (a.x + b.x) + b.deltaY(a) * (a.y + b.y)
 
     def circle(self, a, b, c):
