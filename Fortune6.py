@@ -5,14 +5,14 @@ import heapq
 class Action:
     x = 0.0
     y = 0.0
-    a = None
+    directrix = None
     valid = True
     isPoint = False
 
-    def __init__(self, x, y, a, isPoint):
+    def __init__(self, x, y, directrix, isPoint):
         self.x = x
         self.y = y
-        self.a = a
+        self.directrix = directrix
         self.valid = True
         self.isPoint = isPoint
 
@@ -88,7 +88,7 @@ class Voronoi:
             self.output.append(s)
 
             # remove associated arc (parabola)
-            a = e.a
+            a = e.directrix
             if a.pprev is not None:
                 a.pprev.pnext = a.pnext
                 a.pprev.s1 = s
@@ -227,18 +227,6 @@ class Voronoi:
             return True, res
         return False, None
 
-    def qwer(self, p ,i):
-        if (2 * i.p.x == 2 * p.x):
-            return None
-        a = (self.intersection(i.pprev.p, i.p, 1.0*p.x)).y
-        b = (self.intersection(i.p, i.pnext.p, 1.0*p.x)).y
-
-        py = p.y
-        px = 1.0 * ((i.p.x)**2 + (i.p.y-py)**2 -
-                    p.x**2) / (2*i.p.x - 2*p.x)
-        res = Action(px, py, 0.0, True)
-        return res
-
     def intersection(self, p0, p1, l):
         # get the intersection of two parabolas
         p = p0
@@ -266,17 +254,12 @@ class Voronoi:
         return res
 
     def finish_edges(self):
-        i = self.BeachLine
-        while i.pnext is not None:
-            if i.s1 is not None:
-                p = self.intersection(i.p, i.pnext.p, -100)
-                i.s1.finish(p)
-            i = i.pnext
+        curr = self.BeachLine
+        while curr is not None:
+            if curr.s1 is not None and curr.pnext is not None:
+                p = self.intersection(curr.p, curr.pnext.p, -100)
+                curr.s1.finish(p)
+            curr = curr.pnext
 
     def get_output(self):
-        res = []
-        for o in self.output:
-            p0 = o.first
-            p1 = o.second
-            res.append((p0.x, p0.y, p1.x, p1.y))
-        return res
+        return map(lambda curr: (curr.first.x, curr.first.y, curr.second.x, curr.second.y), self.output)

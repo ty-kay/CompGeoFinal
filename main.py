@@ -21,13 +21,13 @@ def main():
     qwer.process()
     plt.xlim([-10, 10])
     plt.ylim([-10, 10])
-    for a in qwer.get_output():
+    asdf = map(lambda curr: (curr.first.x, curr.first.y, curr.second.x, curr.second.y), qwer.output)
+    for a in asdf:
         x_values = [a[0], a[2]]
         y_values = [a[1], a[3]]
         plt.plot(x_values, y_values, 'bo', linestyle="--")
     plt.show()
     exit()
-
 
 if __name__ == '__main__':
     main()
