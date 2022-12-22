@@ -42,7 +42,7 @@ class Voronoi:
             s = Segment(e.p)
             self.output.append(s)
 
-            # remove associated arc (parabola)
+            # # remove associated arc (parabola)
             a = e.a
             if a.pprev is not None:
                 a.pprev.pnext = a.pnext
