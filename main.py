@@ -26,6 +26,7 @@ def main():
         y_values = [a[1], a[3]]
         plt.plot(x_values, y_values, 'bo', linestyle="--")
     plt.show()
+    exit()
 
 
 if __name__ == '__main__':

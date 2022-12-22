@@ -19,7 +19,7 @@ class ACTION:
         self.isPoint = isPoint
 
 
-class Arc:
+class BeachLine:
     p = None
     pprev = None
     pnext = None

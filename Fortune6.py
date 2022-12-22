@@ -2,41 +2,31 @@ import random
 import math
 import matplotlib.pyplot as plt
 # from queue import PriorityQueue
-from DataType import Arc, Segment, PriorityQueue, ACTION
-
-# Source: (C++) http://www.cs.hmc.edu/~mbrubeck/voronoi.html
-
+from DataType import BeachLine, Segment, PriorityQueue, ACTION
 
 class Voronoi:
     def __init__(self, points):
-        self.output = []  # list of line segment
-        self.arc = None  # binary tree for parabola arcs
+        self.output = []
+        self.BeachLine = None
+        self.points = PriorityQueue()
 
-        self.points = PriorityQueue()  # site events
-
-        # bounding box
-        self.x0 = -10.0
-        self.x1 = -10.0
-        self.y0 = 10.0
-        self.y1 = 10.0
-
-        # insert points to site event
         for pts in points:
-            point = ACTION(pts[0], pts[1], 0.0, True)
+            # tiny offset in case two points have the same x coordinate
+            rand = 0.000001 * random.random()
+            point = ACTION(rand + pts[0], pts[1], 0.0, True)
             self.points.push(point)
 
     def process(self):
+        # Determine whether we are processing a point or an event
         while not self.points.empty():
-            qwer = self.points.pop()
-            if qwer.isPoint:
-                self.arc_insert(qwer)
+            now = self.points.pop()
+            if now.isPoint:
+                self.arc_insert(now)
             else:
-                self.process_event(qwer)
-
+                self.process_event(now)
         self.finish_edges()
 
     def process_event(self, e):
-
         if e.valid:
             # start new edge
             s = Segment(e.p)
@@ -64,25 +54,25 @@ class Voronoi:
                 self.check_circle_event(a.pnext, e.x)
 
     def arc_insert(self, p):
-        if self.arc is None:
-            self.arc = Arc(p)
+        if self.BeachLine is None:
+            self.BeachLine = BeachLine(p)
         else:
             # find the current arcs at p.y
-            i = self.arc
+            i = self.BeachLine
             while i is not None:
                 flag, z = self.intersect(p, i)
                 if flag:
                     # new parabola intersects arc i
                     flag, zz = self.intersect(p, i.pnext)
                     if (i.pnext is not None) and (not flag):
-                        i.pnext.pprev = Arc(i.p, i, i.pnext)
+                        i.pnext.pprev = BeachLine(i.p, i, i.pnext)
                         i.pnext = i.pnext.pprev
                     else:
-                        i.pnext = Arc(i.p, i)
+                        i.pnext = BeachLine(i.p, i)
                     i.pnext.s1 = i.s1
 
                     # add p between i and i.pnext
-                    i.pnext.pprev = Arc(p, i, i.pnext)
+                    i.pnext.pprev = BeachLine(p, i, i.pnext)
                     i.pnext = i.pnext.pprev
 
                     i = i.pnext  # now i points to the new arc
@@ -106,13 +96,13 @@ class Voronoi:
                 i = i.pnext
 
             # if p never intersects an arc, append it to the list
-            i = self.arc
+            i = self.BeachLine
             while i.pnext is not None:
                 i = i.pnext
-            i.pnext = Arc(p, i)
+            i.pnext = BeachLine(p, i)
 
             # insert new segment between p and i
-            x = self.x0
+            x = -10
             y = (i.pnext.p.y + i.p.y) / 2.0
             start = ACTION(x, y, 0.0, True)
 
@@ -122,23 +112,25 @@ class Voronoi:
 
     def check_circle_event(self, i, x0):
         # look for a new circle event for arc i
-        if (i.e is not None) and (i.e.x != self.x0):
+        if i.e is not None:
             i.e.valid = False
         i.e = None
 
         if (i.pprev is None) or (i.pnext is None):
             return
 
-        flag, x, o = self.circle(i.pprev.p, i.p, i.pnext.p)
-        if flag and (x > self.x0):
-            i.e = ACTION(x, o, i, False)
-            self.points.push(i.e)
+        if self.CCW(i.pprev.p, i.p, i.pnext.p):
+            return
+
+        x, o = self.circle(i.pprev.p, i.p, i.pnext.p)
+
+        i.e = ACTION(x, o, i, False)
+        self.points.push(i.e)
+
+    def CCW (self, a, b, c):
+        return ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) >= 0
 
     def circle(self, a, b, c):
-        # check if bc is a "right turn" from ab
-        if ((b.x - a.x)*(c.y - a.y) - (c.x - a.x)*(b.y - a.y)) > 0:
-            return False, None, None
-
         # Joseph O'Rourke, Computational Geometry in C (2nd ed.) p.189
         A = b.x - a.x
         B = b.y - a.y
@@ -148,24 +140,19 @@ class Voronoi:
         F = C*(a.x + c.x) + D*(a.y + c.y)
         G = 2*(A*(c.y - b.y) - B*(c.x - b.x))
 
-        if (G == 0):
-            return False, None, None  # Points are co-linear
-
         # point o is the center of the circle
-        ox = 1.0 * (D*E - B*F) / G
-        oy = 1.0 * (A*F - C*E) / G
+        ox = (D*E - B*F) / G
+        oy = (A*F - C*E) / G
 
         # o.x plus radius equals max x coord
         x = ox + math.sqrt((a.x-ox)**2 + (a.y-oy)**2)
         o = ACTION(ox, oy, 0.0, True)
 
-        return True, x, o
+        return x, o
 
     def intersect(self, p, i):
         # check whether a new parabola at point p intersect with arc i
-        if (i is None):
-            return False, None
-        if (i.p.x == p.x):
+        if (i is None) or (i.p.x == p.x):
             return False, None
 
         a = 0.0
@@ -187,11 +174,11 @@ class Voronoi:
     def intersection(self, p0, p1, l):
         # get the intersection of two parabolas
         p = p0
-        if (p0.x == p1.x):
+        if p0.x == p1.x:
             py = (p0.y + p1.y) / 2.0
-        elif (p1.x == l):
+        elif p1.x == l:
             py = p1.y
-        elif (p0.x == l):
+        elif p0.x == l:
             py = p0.y
             p = p1
         else:
@@ -211,11 +198,10 @@ class Voronoi:
         return res
 
     def finish_edges(self):
-        l = self.x1 + (self.x1 - self.x0) + (self.y1 - self.y0)
-        i = self.arc
+        i = self.BeachLine
         while i.pnext is not None:
             if i.s1 is not None:
-                p = self.intersection(i.p, i.pnext.p, l*2.0)
+                p = self.intersection(i.p, i.pnext.p, -100)
                 i.s1.finish(p)
             i = i.pnext
 

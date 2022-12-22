@@ -2,10 +2,9 @@
 # import math
 # import matplotlib.pyplot as plt
 # # from queue import PriorityQueue
-# from DataType import Point, Event, Arc, Segment, PriorityQueue
+# from DataType import Arc, Segment, PriorityQueue, ACTION
 #
 # # Source: (C++) http://www.cs.hmc.edu/~mbrubeck/voronoi.html
-#
 #
 # class Voronoi:
 #     def __init__(self, points):
@@ -13,7 +12,6 @@
 #         self.arc = None  # binary tree for parabola arcs
 #
 #         self.points = PriorityQueue()  # site events
-#         self.event = PriorityQueue()  # circle events
 #
 #         # bounding box
 #         self.x0 = -10.0
@@ -23,48 +21,23 @@
 #
 #         # insert points to site event
 #         for pts in points:
-#             point = Point(pts[0], pts[1])
+#             # tiny offset in case two points have the same x coordinate
+#             rand = 0.000001 * random.random()
+#             point = ACTION(rand + pts[0], pts[1], 0.0, True)
 #             self.points.push(point)
-#             # keep track of bounding box size
-#             if point.x < self.x0:
-#                 self.x0 = point.x
-#             if point.y < self.y0:
-#                 self.y0 = point.y
-#             if point.x > self.x1:
-#                 self.x1 = point.x
-#             if point.y > self.y1:
-#                 self.y1 = point.y
-#
-#         # add margins to the bounding box
-#         dx = (self.x1 - self.x0 + 1) / 5.0
-#         dy = (self.y1 - self.y0 + 1) / 5.0
-#         self.x0 = self.x0 - dx
-#         self.x1 = self.x1 + dx
-#         self.y0 = self.y0 - dy
-#         self.y1 = self.y1 + dy
 #
 #     def process(self):
+#         # Determine whether we are processing a point or an event
 #         while not self.points.empty():
-#             if not self.event.empty() and (self.event.top().x <= self.points.top().x):
-#                 self.process_event()  # handle circle event
+#             now = self.points.pop()
+#             if now.isPoint:
+#                 self.arc_insert(now)
 #             else:
-#                 self.process_point()  # handle site event
-#
-#         # after all points, process remaining circle events
-#         while not self.event.empty():
-#             self.process_event()
-#
+#                 self.process_event(now)
+#         # Finish processing the events
 #         self.finish_edges()
 #
-#     def process_point(self):
-#         # get next event from site pq
-#         p = self.points.pop()
-#         # add new arc (parabola)
-#         self.arc_insert(p)
-#
-#     def process_event(self):
-#         # get next event from circle pq
-#         e = self.event.pop()
+#     def process_event(self, e):
 #
 #         if e.valid:
 #             # start new edge
@@ -143,7 +116,7 @@
 #             # insert new segment between p and i
 #             x = self.x0
 #             y = (i.pnext.p.y + i.p.y) / 2.0
-#             start = Point(x, y)
+#             start = ACTION(x, y, 0.0, True)
 #
 #             seg = Segment(start)
 #             i.s1 = i.pnext.s0 = seg
@@ -160,8 +133,8 @@
 #
 #         flag, x, o = self.circle(i.pprev.p, i.p, i.pnext.p)
 #         if flag and (x > self.x0):
-#             i.e = Event(x, o, i)
-#             self.event.push(i.e)
+#             i.e = ACTION(x, o, i, False)
+#             self.points.push(i.e)
 #
 #     def circle(self, a, b, c):
 #         # check if bc is a "right turn" from ab
@@ -186,7 +159,7 @@
 #
 #         # o.x plus radius equals max x coord
 #         x = ox + math.sqrt((a.x-ox)**2 + (a.y-oy)**2)
-#         o = Point(ox, oy)
+#         o = ACTION(ox, oy, 0.0, True)
 #
 #         return True, x, o
 #
@@ -209,7 +182,7 @@
 #             py = p.y
 #             px = 1.0 * ((i.p.x)**2 + (i.p.y-py)**2 -
 #                         p.x**2) / (2*i.p.x - 2*p.x)
-#             res = Point(px, py)
+#             res = ACTION(px, py, 0.0, True)
 #             return True, res
 #         return False, None
 #
@@ -236,7 +209,7 @@
 #             py = 1.0 * (-b-math.sqrt(b*b - 4*a*c)) / (2*a)
 #
 #         px = 1.0 * (p.x**2 + (p.y-py)**2 - l**2) / (2*p.x-2*l)
-#         res = Point(px, py)
+#         res = ACTION(px, py, 0.0, True)
 #         return res
 #
 #     def finish_edges(self):
@@ -247,22 +220,6 @@
 #                 p = self.intersection(i.p, i.pnext.p, l*2.0)
 #                 i.s1.finish(p)
 #             i = i.pnext
-#
-#     def print_output(self):
-#         it = 0
-#         for o in self.output:
-#             it = it + 1
-#             p0 = o.start
-#             p1 = o.end
-#             print(p0.x, p0.y, p1.x, p1.y)
-#         # for o in self.output:
-#         #     it = it + 1
-#         #     p0 = o.start
-#         #     p1 = o.end
-#         #     x_values = [p0.x, p1.x]
-#         #     y_values = [p0.y, p1.y]
-#         #     plt.plot(x_values, y_values, 'bo', linestyle="--")
-#         # plt.show()
 #
 #     def get_output(self):
 #         res = []
