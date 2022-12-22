@@ -16,6 +16,15 @@ class Action:
         self.process = True
         self.isPoint = isPoint
 
+    def deltaX(self, p):
+        return self.x - p.x
+
+    def deltaY(self, p):
+        return self.y - p.y
+
+    def distance(self, p):
+        return math.sqrt(math.pow(self.deltaX(p), 2) + math.pow(self.deltaY(p), 2))
+
 class BeachLine:
     p = None
     prior = None
@@ -24,7 +33,7 @@ class BeachLine:
     left = None
     right = None
 
-    def __init__(self, p, a=None, b=None):
+    def __init__(self, p, a, b):
         self.p = p
         self.prior = a
         self.next = b
@@ -81,14 +90,13 @@ class Voronoi:
             point = Action(rand + pts[0], pts[1], 0.0, True)
             self.points.push(point)
 
-
     def process(self):
         # Determine whether we are processing a point or an event
         while not self.points.empty():
             now = self.points.pop()
             if now.isPoint:
                 if self.BeachLine is None:
-                    self.BeachLine = BeachLine(now)
+                    self.BeachLine = BeachLine(now, None, None)
                 else:
                     self.arc_insert(now)
             else:
@@ -111,9 +119,9 @@ class Voronoi:
 
             # recheck circle events on either side of p
             if a.prior is not None:
-                self.check_circle_event(a.prior, e.x)
+                self.check_circle_event(a.prior)
             if a.next is not None:
-                self.check_circle_event(a.next, e.x)
+                self.check_circle_event(a.next)
 
     def arc_insert(self, p):
             curr = self.BeachLine
@@ -126,7 +134,7 @@ class Voronoi:
                         curr.next.prior = BeachLine(curr.p, curr, curr.next)
                         curr.next = curr.next.prior
                     else:
-                        curr.next = BeachLine(curr.p, curr)
+                        curr.next = BeachLine(curr.p, curr, None)
                     curr.next.right = curr.right
 
                     # add p between i and i.next
@@ -146,9 +154,9 @@ class Voronoi:
                     curr.next.left = curr.right = seg
 
                     # check for new circle events around the new arc
-                    self.check_circle_event(curr, p.x)
-                    self.check_circle_event(curr.prior, p.x)
-                    self.check_circle_event(curr.next, p.x)
+                    self.check_circle_event(curr)
+                    self.check_circle_event(curr.prior)
+                    self.check_circle_event(curr.next)
 
                     return
 
@@ -158,7 +166,7 @@ class Voronoi:
             curr = self.BeachLine
             while curr.next is not None:
                 curr = curr.next
-            curr.next = BeachLine(p, curr)
+            curr.next = BeachLine(p, curr, None)
 
             # insert new segment between p and i
             x = -10
@@ -169,16 +177,13 @@ class Voronoi:
             curr.right = curr.next.left = seg
             self.output.append(seg)
 
-    def check_circle_event(self, i, x0):
+    def check_circle_event(self, i):
         # look for a new circle event for arc i
         if i.e is not None:
             i.e.process = False
         i.e = None
 
-        if (i.prior is None) or (i.next is None):
-            return
-
-        if self.CCW(i.prior.p, i.p, i.next.p):
+        if (i.prior is None) or (i.next is None) or self.CCW(i.prior.p, i.p, i.next.p):
             return
 
         x, o = self.circle(i.prior.p, i.p, i.next.p)
@@ -189,23 +194,25 @@ class Voronoi:
     def CCW (self, a, b, c):
         return ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) >= 0
 
+    def findCenterHelp(self, a, b):
+        return b.deltaX(a)*(a.x + b.x) + b.deltaY(a)*(a.y + b.y)
+
+
     def circle(self, a, b, c):
         # Joseph O'Rourke, Computational Geometry in C (2nd ed.) p.189
         A = b.x - a.x
         B = b.y - a.y
         C = c.x - a.x
         D = c.y - a.y
-        E = A*(a.x + b.x) + B*(a.y + b.y)
-        F = C*(a.x + c.x) + D*(a.y + c.y)
+        E = b.deltaX(a)*(b.x + a.x) + b.deltaY(a)*(b.y + a.y)
+        F = c.deltaX(a)*(c.x + a.x) + c.deltaY(a)*(c.y + a.y)
         G = 2*(A*(c.y - b.y) - B*(c.x - b.x))
 
-        # point o is the center of the circle
-        ox = (D*E - B*F) / G
-        oy = (A*F - C*E) / G
+        center = Action((D*E - B*F) / G, (b.deltaX(a)*F - C*E) / G, None, None)
 
         # o.x plus radius equals max x coord
-        x = ox + math.sqrt((a.x-ox)**2 + (a.y-oy)**2)
-        o = Action(ox, oy, 0.0, True)
+        x = center.x + a.distance(center)
+        o = Action(center.x, center.y, 0.0, True)
 
         return x, o
 
