@@ -1,8 +1,63 @@
 import random
 import math
-import matplotlib.pyplot as plt
-# from queue import PriorityQueue
-from DataType import BeachLine, Segment, PriorityQueue, ACTION
+import heapq
+
+class Action:
+    x = 0.0
+    y = 0.0
+    a = None
+    valid = True
+    isPoint = False
+
+    def __init__(self, x, y, a, isPoint):
+        self.x = x
+        self.y = y
+        self.a = a
+        self.valid = True
+        self.isPoint = isPoint
+
+class BeachLine:
+    p = None
+    pprev = None
+    pnext = None
+    e = None
+    s0 = None
+    s1 = None
+
+    def __init__(self, p, a=None, b=None):
+        self.p = p
+        self.pprev = a
+        self.pnext = b
+        self.e = None
+        self.s0 = None
+        self.s1 = None
+
+class Line:
+    first = None
+    second = None
+
+    def __init__(self, p):
+        self.first = p
+        self.second = None
+
+    def finish(self, p):
+        if self.second is None:
+            self.second = p
+
+class PriorityQueue:
+    def __init__(self):
+        self.pq = []
+
+    def push(self, item):
+        entry = [item.x, item]
+        heapq.heappush(self.pq, entry)
+
+    def pop(self):
+        priority, item = heapq.heappop(self.pq)
+        return item
+
+    def empty(self):
+        return not self.pq
 
 class Voronoi:
     def __init__(self, points):
@@ -13,7 +68,7 @@ class Voronoi:
         for pts in points:
             # tiny offset in case two points have the same x coordinate
             rand = 0.000001 * random.random()
-            point = ACTION(rand + pts[0], pts[1], 0.0, True)
+            point = Action(rand + pts[0], pts[1], 0.0, True)
             self.points.push(point)
 
     def process(self):
@@ -28,8 +83,8 @@ class Voronoi:
 
     def process_event(self, e):
         if e.valid:
-            # start new edge
-            s = Segment(e.p)
+            # first new edge
+            s = Line(e.y)
             self.output.append(s)
 
             # remove associated arc (parabola)
@@ -43,9 +98,9 @@ class Voronoi:
 
             # finish the edges before and after a
             if a.s0 is not None:
-                a.s0.finish(e.p)
+                a.s0.finish(e.y)
             if a.s1 is not None:
-                a.s1.finish(e.p)
+                a.s1.finish(e.y)
 
             # recheck circle events on either side of p
             if a.pprev is not None:
@@ -63,7 +118,7 @@ class Voronoi:
                 flag, z = self.intersect(p, i)
                 if flag:
                     # new parabola intersects arc i
-                    flag, zz = self.intersect(p, i.pnext)
+                    flag, _ = self.intersect(p, i.pnext)
                     if (i.pnext is not None) and (not flag):
                         i.pnext.pprev = BeachLine(i.p, i, i.pnext)
                         i.pnext = i.pnext.pprev
@@ -78,11 +133,12 @@ class Voronoi:
                     i = i.pnext  # now i points to the new arc
 
                     # add new half-edges connected to i's endpoints
-                    seg = Segment(z)
+                    # z = self.qwer(p, i)
+                    seg = Line(z)
                     self.output.append(seg)
                     i.pprev.s1 = i.s0 = seg
 
-                    seg = Segment(z)
+                    seg = Line(z)
                     self.output.append(seg)
                     i.pnext.s0 = i.s1 = seg
 
@@ -104,9 +160,9 @@ class Voronoi:
             # insert new segment between p and i
             x = -10
             y = (i.pnext.p.y + i.p.y) / 2.0
-            start = ACTION(x, y, 0.0, True)
+            first = Action(x, y, 0.0, True)
 
-            seg = Segment(start)
+            seg = Line(first)
             i.s1 = i.pnext.s0 = seg
             self.output.append(seg)
 
@@ -124,7 +180,7 @@ class Voronoi:
 
         x, o = self.circle(i.pprev.p, i.p, i.pnext.p)
 
-        i.e = ACTION(x, o, i, False)
+        i.e = Action(x, o, i, False)
         self.points.push(i.e)
 
     def CCW (self, a, b, c):
@@ -146,7 +202,7 @@ class Voronoi:
 
         # o.x plus radius equals max x coord
         x = ox + math.sqrt((a.x-ox)**2 + (a.y-oy)**2)
-        o = ACTION(ox, oy, 0.0, True)
+        o = Action(ox, oy, 0.0, True)
 
         return x, o
 
@@ -167,9 +223,21 @@ class Voronoi:
             py = p.y
             px = 1.0 * ((i.p.x)**2 + (i.p.y-py)**2 -
                         p.x**2) / (2*i.p.x - 2*p.x)
-            res = ACTION(px, py, 0.0, True)
+            res = Action(px, py, 0.0, True)
             return True, res
         return False, None
+
+    def qwer(self, p ,i):
+        if (2 * i.p.x == 2 * p.x):
+            return None
+        a = (self.intersection(i.pprev.p, i.p, 1.0*p.x)).y
+        b = (self.intersection(i.p, i.pnext.p, 1.0*p.x)).y
+
+        py = p.y
+        px = 1.0 * ((i.p.x)**2 + (i.p.y-py)**2 -
+                    p.x**2) / (2*i.p.x - 2*p.x)
+        res = Action(px, py, 0.0, True)
+        return res
 
     def intersection(self, p0, p1, l):
         # get the intersection of two parabolas
@@ -194,7 +262,7 @@ class Voronoi:
             py = 1.0 * (-b-math.sqrt(b*b - 4*a*c)) / (2*a)
 
         px = 1.0 * (p.x**2 + (p.y-py)**2 - l**2) / (2*p.x-2*l)
-        res = ACTION(px, py, 0.0, True)
+        res = Action(px, py, 0.0, True)
         return res
 
     def finish_edges(self):
@@ -208,7 +276,7 @@ class Voronoi:
     def get_output(self):
         res = []
         for o in self.output:
-            p0 = o.start
-            p1 = o.end
+            p0 = o.first
+            p1 = o.second
             res.append((p0.x, p0.y, p1.x, p1.y))
         return res

@@ -1,6 +1,4 @@
 import heapq
-import math
-
 
 class ACTION:
     x = 0.0
@@ -39,18 +37,18 @@ class BeachLine:
 class Segment:
     start = None
     end = None
-    done = False
+    # done = False
 
     def __init__(self, p):
         self.start = p
         self.end = None
-        self.done = False
+        # self.done = False
 
     def finish(self, p):
-        if self.done:
-            return
+        # if self.done:
+        #     return
         self.end = p
-        self.done = True
+        # self.done = True
 
 
 class PriorityQueue:
