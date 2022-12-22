@@ -32,14 +32,15 @@ class BeachLine:
         self.left = None
         self.right = None
 
-    def remove(self, e, s):
-        if e.prior is not None:
-            e.prior.next = e.next
-            e.prior.right = s
-        if e.next is not None:
-            e.next.prior = e.prior
-            e.next.left = s
-        return e
+    def remove(self, s):
+        a = self.e.directrix
+        if a.prior is not None:
+            a.prior.next = a.next
+            a.prior.right = s
+        if a.next is not None:
+            a.next.prior = a.prior
+            a.next.left = s
+        return a
 
 class Line:
     first = None
@@ -86,7 +87,10 @@ class Voronoi:
         while not self.points.empty():
             now = self.points.pop()
             if now.isPoint:
-                self.arc_insert(now)
+                if self.BeachLine is None:
+                    self.BeachLine = BeachLine(now)
+                else:
+                    self.arc_insert(now)
             else:
                 self.process_event(now)
         self.finish_edges()
@@ -97,21 +101,13 @@ class Voronoi:
             s = Line(e.y)
             self.output.append(s)
 
-            # remove associated arc (parabola)
-            a = e.directrix
-            if a.prior is not None:
-                a.prior.next = a.next
-                a.prior.right = s
-            if a.next is not None:
-                a.next.prior = a.prior
-                a.next.left = s
-            # a = BeachLine.remove(e.directrix, s)
+            a = e.directrix.remove(s)
 
-            # finish the edges before and after a
-            if a.left is not None:
-                a.left.finish(e.y)
             if a.right is not None:
                 a.right.finish(e.y)
+
+            if a.left is not None:
+                a.left.finish(e.y)
 
             # recheck circle events on either side of p
             if a.prior is not None:
@@ -120,61 +116,57 @@ class Voronoi:
                 self.check_circle_event(a.next, e.x)
 
     def arc_insert(self, p):
-        if self.BeachLine is None:
-            self.BeachLine = BeachLine(p)
-        else:
-            # find the current arcs at p.y
-            i = self.BeachLine
-            while i is not None:
-                flag, z = self.intersect(p, i)
+            curr = self.BeachLine
+            while curr is not None:
+                flag, z = self.intersect(p, curr)
                 if flag:
                     # new parabola intersects arc i
-                    flag, _ = self.intersect(p, i.next)
-                    if (i.next is not None) and (not flag):
-                        i.next.prior = BeachLine(i.p, i, i.next)
-                        i.next = i.next.prior
+                    flag, _ = self.intersect(p, curr.next)
+                    if (curr.next is not None) and (not flag):
+                        curr.next.prior = BeachLine(curr.p, curr, curr.next)
+                        curr.next = curr.next.prior
                     else:
-                        i.next = BeachLine(i.p, i)
-                    i.next.right = i.right
+                        curr.next = BeachLine(curr.p, curr)
+                    curr.next.right = curr.right
 
                     # add p between i and i.next
-                    i.next.prior = BeachLine(p, i, i.next)
-                    i.next = i.next.prior
+                    curr.next.prior = BeachLine(p, curr, curr.next)
+                    curr.next = curr.next.prior
 
-                    i = i.next  # now i points to the new arc
+                    curr = curr.next  # now i points to the new arc
 
                     # add new half-edges connected to i's endpoints
                     # z = self.qwer(p, i)
                     seg = Line(z)
                     self.output.append(seg)
-                    i.prior.right = i.left = seg
+                    curr.prior.right = curr.left = seg
 
                     seg = Line(z)
                     self.output.append(seg)
-                    i.next.left = i.right = seg
+                    curr.next.left = curr.right = seg
 
                     # check for new circle events around the new arc
-                    self.check_circle_event(i, p.x)
-                    self.check_circle_event(i.prior, p.x)
-                    self.check_circle_event(i.next, p.x)
+                    self.check_circle_event(curr, p.x)
+                    self.check_circle_event(curr.prior, p.x)
+                    self.check_circle_event(curr.next, p.x)
 
                     return
 
-                i = i.next
+                curr = curr.next
 
             # if p never intersects an arc, append it to the list
-            i = self.BeachLine
-            while i.next is not None:
-                i = i.next
-            i.next = BeachLine(p, i)
+            curr = self.BeachLine
+            while curr.next is not None:
+                curr = curr.next
+            curr.next = BeachLine(p, curr)
 
             # insert new segment between p and i
             x = -10
-            y = (i.next.p.y + i.p.y) / 2.0
+            y = (curr.next.p.y + curr.p.y) / 2.0
             first = Action(x, y, 0.0, True)
 
             seg = Line(first)
-            i.right = i.next.left = seg
+            curr.right = curr.next.left = seg
             self.output.append(seg)
 
     def check_circle_event(self, i, x0):
