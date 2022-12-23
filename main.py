@@ -17,11 +17,11 @@ def main():
     # points = sorted(points, key=lambda x: x[1])
     for point in points:
         plt.plot(point[0], point[1], 'o')
-    qwer = Fortune6.Voronoi(points)
-    qwer.compute()
+    run = Fortune6.Voronoi(points)
+    run.compute()
     plt.xlim([-10, 10])
     plt.ylim([-10, 10])
-    for line in qwer.output:
+    for line in run.output:
         x_values = [line.first.x, line.second.x]
         y_values = [line.first.y, line.second.y]
         plt.plot(x_values, y_values, 'k-')

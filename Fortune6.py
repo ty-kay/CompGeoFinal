@@ -151,6 +151,14 @@ def circle(first, second, third):
     return dist, action
 
 
+def insert(curr, point):
+    curr.next.right = curr.right
+    curr.next.prior = BeachLine(point, curr, curr.next)
+    curr.next = curr.next.prior
+    curr = curr.next
+    return curr
+
+
 class Voronoi:
     def __init__(self, points):
         self.BeachLine = None
@@ -170,7 +178,7 @@ class Voronoi:
                 if self.BeachLine is None:
                     self.BeachLine = BeachLine(now, None, None)
                 else:
-                    self.arc_insert(now)
+                    self.arc(now)
             else:
                 self.event(now)
         self.complete()
@@ -198,68 +206,68 @@ class Voronoi:
         self.output.append(ray)
         return ray
 
-    def arc_insert(self, point):
+    def notfound(self, point):
         curr = self.BeachLine
+        while curr.next is not None:
+            curr = curr.next
+        curr.next = BeachLine(point, curr, None)
+
+    def arc(self, point):
+        curr = self.BeachLine
+        # searching a binary tree
         while curr is not None:
             if curr.point.x != point.x:
                 ans = intersect(point, curr)
                 if ans is not None:
                     ans2 = intersect(point, curr.next)
-                    if (curr.next is not None) and (ans2 is None):
+                    if (curr.next is None) or (ans2 is not None):
+                        curr.next = BeachLine(curr.point, curr, None)
+                        curr = insert(curr, point)
+                    else:
                         curr.next.prior = BeachLine(curr.point, curr, curr.next)
                         curr.next = curr.next.prior
-                    else:
-                        curr.next = BeachLine(curr.point, curr, None)
-                    curr.next.right = curr.right
-
-                    curr.next.prior = BeachLine(point, curr, curr.next)
-                    curr.next = curr.next.prior
-
-                    curr = curr.next
+                        curr = insert(curr, point)
 
                     ray = self.ray(ans)
-                    curr.prior.right = curr.left = ray
-
+                    curr.prior.right = ray
+                    curr.left = ray
                     ray2 = self.ray(ans)
-                    curr.next.left = curr.right = ray2
+                    curr.next.left = ray2
+                    curr.right = ray2
 
-                    # check for new circle events around the new arc
-                    self.circleCheck(curr)
-                    self.circleCheck(curr.prior)
-                    self.circleCheck(curr.next)
+                    if curr is not None:
+                        self.circleCheck(curr)
+                    if curr.prior is not None:
+                        self.circleCheck(curr.prior)
+                    if curr.next is not None:
+                        self.circleCheck(curr.next)
 
                     return
 
             curr = curr.next
 
-        # if p never intersects an arc, append it to the list
-        curr = self.BeachLine
-        while curr.next is not None:
-            curr = curr.next
-        curr.next = BeachLine(point, curr, None)
-        curr.balanceTree()
+        self.notfound(point)
 
-        # insert new segment between p and i
         x = -10
         y = (curr.next.point.y + curr.point.y) / 2.0
-        first = Action(x, y, None, True)
+        ans = Action(x, y, None, True)
 
-        seg = Line(first)
-        curr.right = curr.next.left = seg
-        self.output.append(seg)
+        ray = self.ray(ans)
+        curr.right = ray
+        curr.next.left = ray
 
-    def circleCheck(self, i):
-        if i.e is not None:
-            i.e.process = False
-        i.e = None
+    def circleCheck(self, curr):
+        if curr.e is not None:
+            curr.e.process = False
+        curr.e = None
 
-        if (i.prior is None) or (i.next is None) or CCW(i.prior.point, i.point, i.next.point):
+        if (curr.prior is None) or (curr.next is None) or CCW(curr.prior.point, curr.point, curr.next.point):
             return
 
-        x, o = circle(i.prior.point, i.point, i.next.point)
+        x, o = circle(curr.prior.point, curr.point, curr.next.point)
 
-        i.e = Action(x, o, i, False)
-        self.points.push(i.e)
+        curr.e = Action(x, o, curr, False)
+        self.points.push(curr.e)
 
     def complete(self):
         curr = self.BeachLine
