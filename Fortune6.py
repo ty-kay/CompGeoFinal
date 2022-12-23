@@ -249,7 +249,7 @@ class Voronoi:
         self.notfound(point)
 
         x = -10
-        y = (curr.next.point.y + curr.point.y) / 2.0
+        y = (curr.next.point.y + curr.point.y) / 2
         ans = Action(x, y, None, True)
 
         ray = self.ray(ans)
@@ -273,6 +273,5 @@ class Voronoi:
         curr = self.BeachLine
         while curr is not None:
             if curr.right is not None and curr.next is not None:
-                p = intersection(curr.point, curr.next.point, -100)
-                curr.right.endpoint(p)
+                curr.right.endpoint(intersection(curr.point, curr.next.point, -100))
             curr = curr.next
