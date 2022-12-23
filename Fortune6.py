@@ -79,6 +79,81 @@ class PriorityQueue:
         return not self.pq
 
 
+def update(first, line):
+    return (math.pow(first.y, 2) + math.pow(first.x, 2) - math.pow(line, 2)) / (2 * (first.x - line))
+
+
+def quadratic(first, second, line):
+    a = 2 * (first.x - line)
+    b = 2 * (second.x - line)
+    c = -2 * (first.y / a - second.y / b)
+    d = update(first, line)
+    e = d - update(second, line)
+    py = (-c - math.sqrt(math.pow(c, 2) - 4 * (1 / a - 1 / b) * e)) / (2 * (1 / a - 1 / b))
+    return py
+
+
+def intersection(first, second, line):
+    curr = first
+    if second.x == line:
+        py = second.y
+    elif first.x == line:
+        py = first.y
+        curr = second
+    elif first.x == second.x:
+        py = (first.y + second.y) / 2
+    else:
+        py = quadratic(first, second, line)
+
+    px = (math.pow(curr.x, 2) + math.pow((curr.y - py), 2) - math.pow(line, 2)) / (2 * curr.x - 2 * line)
+    return Action(px, py, None, True)
+
+
+def intersect(p, i):
+    # check whether a new parabola at point p intersect with arc i
+    if (i is None) or (i.p.x == p.x):
+        return False, None
+
+    a = 0.0
+    b = 0.0
+
+    if i.prior is not None:
+        a = (intersection(i.prior.p, i.p, 1.0 * p.x)).y
+    if i.next is not None:
+        b = (intersection(i.p, i.next.p, 1.0 * p.x)).y
+
+    if (((i.prior is None) or (a <= p.y)) and ((i.next is None) or (p.y <= b))):
+        py = p.y
+        px = 1.0 * ((i.p.x) ** 2 + (i.p.y - py) ** 2 -
+                    p.x ** 2) / (2 * i.p.x - 2 * p.x)
+        res = Action(px, py, None, True)
+        return True, res
+    return False, None
+
+
+def CCW(a, b, c):
+    return ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) >= 0
+
+
+def findCenter(a, b):
+    return b.deltaX(a) * (a.x + b.x) + b.deltaY(a) * (a.y + b.y)
+
+
+def circle(first, second, third):
+    a = second.deltaX(first) * (second.x + first.x) + second.deltaY(first) * (second.y + first.y)
+    b = third.deltaX(first) * (third.x + first.x) + third.deltaY(first) * (third.y + first.y)
+    c = 2 * (second.deltaX(first) * (third.y - second.y) - second.deltaY(first) * (third.x - second.x))
+
+    center = Action((third.deltaY(first) * a - second.deltaY(first) * b) / c,
+                    (second.deltaX(first) * b - third.deltaX(first) * a) / c, None, None)
+
+    # o.x plus radius equals max x coord
+    x = center.x + first.distance(center)
+    o = Action(center.x, center.y, None, True)
+
+    return x, o
+
+
 class Voronoi:
     def __init__(self, points):
         self.BeachLine = None
@@ -129,44 +204,45 @@ class Voronoi:
     def arc_insert(self, p):
         curr = self.BeachLine
         while curr is not None:
-            flag, z = self.intersect(p, curr)
-            if flag:
-                # new parabola intersects arc i
-                flag, _ = self.intersect(p, curr.next)
-                if (curr.next is not None) and (not flag):
-                    curr.next.prior = BeachLine(curr.p, curr, curr.next)
-                    curr.next = curr.next.prior
-                else:
-                    curr.next = BeachLine(curr.p, curr, None)
+            if curr.p.x != p.x:
+                flag, z = intersect(p, curr)
+                if flag:
+                    # new parabola intersects arc i
+                    flag, _ = intersect(p, curr.next)
+                    if (curr.next is not None) and (not flag):
+                        curr.next.prior = BeachLine(curr.p, curr, curr.next)
+                        curr.next = curr.next.prior
+                    else:
+                        curr.next = BeachLine(curr.p, curr, None)
+                        curr.balanceTree()
+                    curr.next.right = curr.right
+
                     curr.balanceTree()
-                curr.next.right = curr.right
 
-                curr.balanceTree()
+                    # add p between i and i.next
+                    curr.next.prior = BeachLine(p, curr, curr.next)
+                    curr.next = curr.next.prior
 
-                # add p between i and i.next
-                curr.next.prior = BeachLine(p, curr, curr.next)
-                curr.next = curr.next.prior
+                    # self.BeachLine.count = self.BeachLine.count + 2
 
-                # self.BeachLine.count = self.BeachLine.count + 2
+                    curr = curr.next  # now i points to the new arc
 
-                curr = curr.next  # now i points to the new arc
+                    # add new half-edges connected to i's endpoints
+                    # z = self.qwer(p, i)
+                    seg = Line(z)
+                    self.output.append(seg)
+                    curr.prior.right = curr.left = seg
 
-                # add new half-edges connected to i's endpoints
-                # z = self.qwer(p, i)
-                seg = Line(z)
-                self.output.append(seg)
-                curr.prior.right = curr.left = seg
+                    seg = Line(z)
+                    self.output.append(seg)
+                    curr.next.left = curr.right = seg
 
-                seg = Line(z)
-                self.output.append(seg)
-                curr.next.left = curr.right = seg
+                    # check for new circle events around the new arc
+                    self.check_circle_event(curr)
+                    self.check_circle_event(curr.prior)
+                    self.check_circle_event(curr.next)
 
-                # check for new circle events around the new arc
-                self.check_circle_event(curr)
-                self.check_circle_event(curr.prior)
-                self.check_circle_event(curr.next)
-
-                return
+                    return
 
             curr = curr.next
 
@@ -192,93 +268,18 @@ class Voronoi:
             i.e.process = False
         i.e = None
 
-        if (i.prior is None) or (i.next is None) or self.CCW(i.prior.p, i.p, i.next.p):
+        if (i.prior is None) or (i.next is None) or CCW(i.prior.p, i.p, i.next.p):
             return
 
-        x, o = self.circle(i.prior.p, i.p, i.next.p)
+        x, o = circle(i.prior.p, i.p, i.next.p)
 
         i.e = Action(x, o, i, False)
         self.points.push(i.e)
-
-
-    def CCW(self, a, b, c):
-        return ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) >= 0
-
-
-    def findCenter(self, a, b):
-        return b.deltaX(a) * (a.x + b.x) + b.deltaY(a) * (a.y + b.y)
-
-
-    def circle(self, first, second, third):
-        a = second.deltaX(first) * (second.x + first.x) + second.deltaY(first) * (second.y + first.y)
-        b = third.deltaX(first) * (third.x + first.x) + third.deltaY(first) * (third.y + first.y)
-        c = 2 * (second.deltaX(first) * (third.y - second.y) - second.deltaY(first) * (third.x - second.x))
-
-        center = Action((third.deltaY(first) * a - second.deltaY(first) * b) / c,
-                        (second.deltaX(first) * b - third.deltaX(first) * a) / c, None, None)
-
-        # o.x plus radius equals max x coord
-        x = center.x + first.distance(center)
-        o = Action(center.x, center.y, None, True)
-
-        return x, o
-
-    def intersect(self, p, i):
-        # check whether a new parabola at point p intersect with arc i
-        if (i is None) or (i.p.x == p.x):
-            return False, None
-
-        a = 0.0
-        b = 0.0
-
-        if i.prior is not None:
-            a = (self.intersection(i.prior.p, i.p, 1.0 * p.x)).y
-        if i.next is not None:
-            b = (self.intersection(i.p, i.next.p, 1.0 * p.x)).y
-
-        if (((i.prior is None) or (a <= p.y)) and ((i.next is None) or (p.y <= b))):
-            py = p.y
-            px = 1.0 * ((i.p.x) ** 2 + (i.p.y - py) ** 2 -
-                        p.x ** 2) / (2 * i.p.x - 2 * p.x)
-            res = Action(px, py, None, True)
-            return True, res
-        return False, None
-
-
-    def update(self, first, line):
-        return (math.pow(first.y, 2) + math.pow(first.x, 2) - math.pow(line, 2)) / (2 * (first.x - line))
-
-
-    def quadtratic(self, first, second, line):
-        a = 2 * (first.x - line)
-        b = 2 * (second.x - line)
-        c = -2 * (first.y / a - second.y / b)
-        d = self.update(first, line)
-        e = d - self.update(second, line)
-        py = (-c - math.sqrt(math.pow(c, 2) - 4 * (1/a - 1/b) * e)) / (2 * (1/a - 1/b))
-        return py
-
-    def intersection(self, p0, p1, l):
-        # get the intersection of two parabolas
-        p = p0
-        if p0.x == p1.x:
-            py = (p0.y + p1.y) / 2.0
-        elif p1.x == l:
-            py = p1.y
-        elif p0.x == l:
-            py = p0.y
-            p = p1
-        else:
-            py = self.quadtratic(p0, p1, l)
-
-        px = (math.pow(p.x, 2) + math.pow((p.y - py), 2) - math.pow(l, 2)) / (2 * p.x - 2 * l)
-        res = Action(px, py, None, True)
-        return res
 
     def complete(self):
         curr = self.BeachLine
         while curr is not None:
             if curr.right is not None and curr.next is not None:
-                p = self.intersection(curr.p, curr.next.p, -100)
+                p = intersection(curr.p, curr.next.p, -100)
                 curr.right.endpoint(p)
             curr = curr.next
