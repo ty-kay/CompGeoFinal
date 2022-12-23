@@ -109,19 +109,22 @@ def intersect(point, curr):
     if curr is None or curr.point.x == point.x:
         return None
 
-    a = 0.0
-    b = 0.0
+    ret = False
+    if curr.prior is None:
+        if curr.next is None:
+            ret = True
+        elif (intersection(curr.point, curr.next.point, point.x)).y >= point.y:
+            ret = True
+    elif (intersection(curr.prior.point, curr.point, point.x)).y <= point.y:
+        if curr.next is None:
+            ret = True
+        elif (intersection(curr.point, curr.next.point, point.x)).y >= point.y:
+            ret = True
 
-    if curr.prior is not None:
-        a = (intersection(curr.prior.point, curr.point, 1.0 * point.x)).y
-    if curr.next is not None:
-        b = (intersection(curr.point, curr.next.point, 1.0 * point.x)).y
-
-    if (((curr.prior is None) or (a <= point.y)) and ((curr.next is None) or (point.y <= b))):
-        py = point.y
-        px = 1.0 * ((curr.point.x) ** 2 + (curr.point.y - py) ** 2 -
-                    point.x ** 2) / (2 * curr.point.x - 2 * point.x)
-        res = Action(px, py, None, True)
+    if ret:
+        px = (math.pow(curr.point.x, 2) + math.pow((curr.point.y - point.y), 2) - math.pow(point.x, 2))\
+             / (2 * curr.point.x - 2 * point.x)
+        res = Action(px, point.y, None, True)
         return res
     return None
 
@@ -142,10 +145,10 @@ def circle(first, second, third):
     center = Action((third.deltaY(first) * a - second.deltaY(first) * b) / c,
                     (second.deltaX(first) * b - third.deltaX(first) * a) / c, None, None)
 
-    x = center.x + first.distance(center)
-    o = Action(center.x, center.y, None, True)
+    dist = center.x + first.distance(center)
+    action = Action(center.x, center.y, None, True)
 
-    return x, o
+    return dist, action
 
 
 class Voronoi:
@@ -161,7 +164,6 @@ class Voronoi:
             self.points.push(point)
 
     def compute(self):
-        # Determine whether we are processing a point or an event
         while not self.points.empty():
             now = self.points.pop()
             if now.isPoint:
@@ -173,27 +175,23 @@ class Voronoi:
                 self.event(now)
         self.complete()
 
-    def event(self, e):
-        if not e.process:
+    def event(self, event):
+        if not event.process:
             return
 
-        # first new edge
-        s = Line(e.y)
+        s = Line(event.y)
         self.output.append(s)
 
-        a = e.directrix.remove(s)
+        a = event.directrix.remove(s)
 
         if a.right is not None:
-            a.right.endpoint(e.y)
-
+            a.right.endpoint(event.y)
         if a.left is not None:
-            a.left.endpoint(e.y)
-
-        # recheck circle events on either side of p
+            a.left.endpoint(event.y)
         if a.prior is not None:
-            self.check_circle_event(a.prior)
+            self.circleCheck(a.prior)
         if a.next is not None:
-            self.check_circle_event(a.next)
+            self.circleCheck(a.next)
 
     def ray(self, ans):
         ray = Line(ans)
@@ -226,9 +224,9 @@ class Voronoi:
                     curr.next.left = curr.right = ray2
 
                     # check for new circle events around the new arc
-                    self.check_circle_event(curr)
-                    self.check_circle_event(curr.prior)
-                    self.check_circle_event(curr.next)
+                    self.circleCheck(curr)
+                    self.circleCheck(curr.prior)
+                    self.circleCheck(curr.next)
 
                     return
 
@@ -250,8 +248,7 @@ class Voronoi:
         curr.right = curr.next.left = seg
         self.output.append(seg)
 
-    def check_circle_event(self, i):
-        # look for a new circle event for arc i
+    def circleCheck(self, i):
         if i.e is not None:
             i.e.process = False
         i.e = None
