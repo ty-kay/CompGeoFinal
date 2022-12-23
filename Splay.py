@@ -1,4 +1,4 @@
-import Fortune6
+import FortuneFinal
 
 class Node:
     def __init__(self, key):
@@ -27,7 +27,7 @@ class SplayTree:
         n = Node(key)
         # CHANGE THESE TO INTERSECTION!
         # Follow this https://jacquesheunis.com/post/fortunes-algorithm/
-        flag, z = Fortune6.intersect(key, self.root.key)
+        flag, z = FortuneFinal.intersect(key, self.root.key)
 
         # Just use this? No recursion bc splay trees which is nice
         if flag:

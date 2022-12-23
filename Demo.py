@@ -1,5 +1,5 @@
 import tkinter as tk
-from Fortune6 import Voronoi
+from FortuneFinal import Voronoi
 
 
 class MainWindow:

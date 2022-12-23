@@ -35,8 +35,6 @@ class BeachLine:
         self.e = None
         self.left = None
         self.right = None
-        self.red = False
-        self.parent = None
 
     def remove(self, s):
         curr = self.e.directrix
