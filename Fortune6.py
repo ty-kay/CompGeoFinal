@@ -35,6 +35,11 @@ class BeachLine:
         self.e = None
         self.left = None
         self.right = None
+        self.red = False
+        self.parent = None
+
+    def balanceTree(self):
+        return
 
     def remove(self, s):
         curr = self.e.directrix
@@ -44,6 +49,7 @@ class BeachLine:
         if curr.next is not None:
             curr.next.prior = curr.prior
             curr.next.left = s
+        curr.balanceTree()
         return curr
 
 
@@ -132,11 +138,16 @@ class Voronoi:
                     curr.next = curr.next.prior
                 else:
                     curr.next = BeachLine(curr.p, curr, None)
+                    curr.balanceTree()
                 curr.next.right = curr.right
+
+                curr.balanceTree()
 
                 # add p between i and i.next
                 curr.next.prior = BeachLine(p, curr, curr.next)
                 curr.next = curr.next.prior
+
+                # self.BeachLine.count = self.BeachLine.count + 2
 
                 curr = curr.next  # now i points to the new arc
 
@@ -164,6 +175,7 @@ class Voronoi:
         while curr.next is not None:
             curr = curr.next
         curr.next = BeachLine(p, curr, None)
+        curr.balanceTree()
 
         # insert new segment between p and i
         x = -10
@@ -233,6 +245,20 @@ class Voronoi:
             return True, res
         return False, None
 
+
+    def update(self, first, line):
+        return (math.pow(first.y, 2) + math.pow(first.x, 2) - math.pow(line, 2)) / (2 * (first.x - line))
+
+
+    def quadtratic(self, first, second, line):
+        a = 2 * (first.x - line)
+        b = 2 * (second.x - line)
+        c = -2 * (first.y / a - second.y / b)
+        d = self.update(first, line)
+        e = d - self.update(second, line)
+        py = (-c - math.sqrt(math.pow(c, 2) - 4 * (1/a - 1/b) * e)) / (2 * (1/a - 1/b))
+        return py
+
     def intersection(self, p0, p1, l):
         # get the intersection of two parabolas
         p = p0
@@ -244,18 +270,9 @@ class Voronoi:
             py = p0.y
             p = p1
         else:
-            # use quadratic formula
-            z0 = 2.0 * (p0.x - l)
-            z1 = 2.0 * (p1.x - l)
+            py = self.quadtratic(p0, p1, l)
 
-            a = 1.0 / z0 - 1.0 / z1
-            b = -2.0 * (p0.y / z0 - p1.y / z1)
-            c = 1.0 * (p0.y ** 2 + p0.x ** 2 - l ** 2) / z0 - \
-                1.0 * (p1.y ** 2 + p1.x ** 2 - l ** 2) / z1
-
-            py = 1.0 * (-b - math.sqrt(b * b - 4 * a * c)) / (2 * a)
-
-        px = 1.0 * (p.x ** 2 + (p.y - py) ** 2 - l ** 2) / (2 * p.x - 2 * l)
+        px = (math.pow(p.x, 2) + math.pow((p.y - py), 2) - math.pow(l, 2)) / (2 * p.x - 2 * l)
         res = Action(px, py, None, True)
         return res
 
