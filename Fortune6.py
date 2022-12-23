@@ -102,7 +102,7 @@ class Voronoi:
                     self.arc_insert(now)
             else:
                 self.event(now)
-        self.finish_edges()
+        self.complete()
 
     def event(self, e):
         if not e.process:
@@ -200,26 +200,25 @@ class Voronoi:
         i.e = Action(x, o, i, False)
         self.points.push(i.e)
 
+
     def CCW(self, a, b, c):
         return ((b.x - a.x) * (c.y - a.y) - (c.x - a.x) * (b.y - a.y)) >= 0
+
 
     def findCenter(self, a, b):
         return b.deltaX(a) * (a.x + b.x) + b.deltaY(a) * (a.y + b.y)
 
-    def circle(self, a, b, c):
-        # Joseph O'Rourke, Computational Geometry in C (2nd ed.) p.189
-        A = b.x - a.x
-        B = b.y - a.y
-        C = c.x - a.x
-        D = c.y - a.y
-        E = b.deltaX(a) * (b.x + a.x) + b.deltaY(a) * (b.y + a.y)
-        F = c.deltaX(a) * (c.x + a.x) + c.deltaY(a) * (c.y + a.y)
-        G = 2 * (A * (c.y - b.y) - B * (c.x - b.x))
 
-        center = Action((D * E - B * F) / G, (b.deltaX(a) * F - C * E) / G, None, None)
+    def circle(self, first, second, third):
+        a = second.deltaX(first) * (second.x + first.x) + second.deltaY(first) * (second.y + first.y)
+        b = third.deltaX(first) * (third.x + first.x) + third.deltaY(first) * (third.y + first.y)
+        c = 2 * (second.deltaX(first) * (third.y - second.y) - second.deltaY(first) * (third.x - second.x))
+
+        center = Action((third.deltaY(first) * a - second.deltaY(first) * b) / c,
+                        (second.deltaX(first) * b - third.deltaX(first) * a) / c, None, None)
 
         # o.x plus radius equals max x coord
-        x = center.x + a.distance(center)
+        x = center.x + first.distance(center)
         o = Action(center.x, center.y, None, True)
 
         return x, o
@@ -276,7 +275,7 @@ class Voronoi:
         res = Action(px, py, None, True)
         return res
 
-    def finish_edges(self):
+    def complete(self):
         curr = self.BeachLine
         while curr is not None:
             if curr.right is not None and curr.next is not None:
