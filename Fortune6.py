@@ -28,8 +28,8 @@ class Action:
 
 
 class BeachLine:
-    def __init__(self, p, prior, next):
-        self.p = p
+    def __init__(self, point, prior, next):
+        self.point = point
         self.prior = prior
         self.next = next
         self.e = None
@@ -37,9 +37,6 @@ class BeachLine:
         self.right = None
         self.red = False
         self.parent = None
-
-    def balanceTree(self):
-        return
 
     def remove(self, s):
         curr = self.e.directrix
@@ -49,18 +46,17 @@ class BeachLine:
         if curr.next is not None:
             curr.next.prior = curr.prior
             curr.next.left = s
-        curr.balanceTree()
         return curr
 
 
 class Line:
-    def __init__(self, p):
-        self.first = p
+    def __init__(self, point):
+        self.first = point
         self.second = None
 
-    def endpoint(self, p):
+    def endpoint(self, point):
         if self.second is None:
-            self.second = p
+            self.second = point
 
 
 class PriorityQueue:
@@ -109,26 +105,25 @@ def intersection(first, second, line):
     return Action(px, py, None, True)
 
 
-def intersect(p, i):
-    # check whether a new parabola at point p intersect with arc i
-    if (i is None) or (i.p.x == p.x):
-        return False, None
+def intersect(point, curr):
+    if curr is None or curr.point.x == point.x:
+        return None
 
     a = 0.0
     b = 0.0
 
-    if i.prior is not None:
-        a = (intersection(i.prior.p, i.p, 1.0 * p.x)).y
-    if i.next is not None:
-        b = (intersection(i.p, i.next.p, 1.0 * p.x)).y
+    if curr.prior is not None:
+        a = (intersection(curr.prior.point, curr.point, 1.0 * point.x)).y
+    if curr.next is not None:
+        b = (intersection(curr.point, curr.next.point, 1.0 * point.x)).y
 
-    if (((i.prior is None) or (a <= p.y)) and ((i.next is None) or (p.y <= b))):
-        py = p.y
-        px = 1.0 * ((i.p.x) ** 2 + (i.p.y - py) ** 2 -
-                    p.x ** 2) / (2 * i.p.x - 2 * p.x)
+    if (((curr.prior is None) or (a <= point.y)) and ((curr.next is None) or (point.y <= b))):
+        py = point.y
+        px = 1.0 * ((curr.point.x) ** 2 + (curr.point.y - py) ** 2 -
+                    point.x ** 2) / (2 * curr.point.x - 2 * point.x)
         res = Action(px, py, None, True)
-        return True, res
-    return False, None
+        return res
+    return None
 
 
 def CCW(a, b, c):
@@ -147,7 +142,6 @@ def circle(first, second, third):
     center = Action((third.deltaY(first) * a - second.deltaY(first) * b) / c,
                     (second.deltaX(first) * b - third.deltaX(first) * a) / c, None, None)
 
-    # o.x plus radius equals max x coord
     x = center.x + first.distance(center)
     o = Action(center.x, center.y, None, True)
 
@@ -201,41 +195,35 @@ class Voronoi:
         if a.next is not None:
             self.check_circle_event(a.next)
 
-    def arc_insert(self, p):
+    def ray(self, ans):
+        ray = Line(ans)
+        self.output.append(ray)
+        return ray
+
+    def arc_insert(self, point):
         curr = self.BeachLine
         while curr is not None:
-            if curr.p.x != p.x:
-                flag, z = intersect(p, curr)
-                if flag:
-                    # new parabola intersects arc i
-                    flag, _ = intersect(p, curr.next)
-                    if (curr.next is not None) and (not flag):
-                        curr.next.prior = BeachLine(curr.p, curr, curr.next)
+            if curr.point.x != point.x:
+                ans = intersect(point, curr)
+                if ans is not None:
+                    ans2 = intersect(point, curr.next)
+                    if (curr.next is not None) and (ans2 is None):
+                        curr.next.prior = BeachLine(curr.point, curr, curr.next)
                         curr.next = curr.next.prior
                     else:
-                        curr.next = BeachLine(curr.p, curr, None)
-                        curr.balanceTree()
+                        curr.next = BeachLine(curr.point, curr, None)
                     curr.next.right = curr.right
 
-                    curr.balanceTree()
-
-                    # add p between i and i.next
-                    curr.next.prior = BeachLine(p, curr, curr.next)
+                    curr.next.prior = BeachLine(point, curr, curr.next)
                     curr.next = curr.next.prior
 
-                    # self.BeachLine.count = self.BeachLine.count + 2
+                    curr = curr.next
 
-                    curr = curr.next  # now i points to the new arc
+                    ray = self.ray(ans)
+                    curr.prior.right = curr.left = ray
 
-                    # add new half-edges connected to i's endpoints
-                    # z = self.qwer(p, i)
-                    seg = Line(z)
-                    self.output.append(seg)
-                    curr.prior.right = curr.left = seg
-
-                    seg = Line(z)
-                    self.output.append(seg)
-                    curr.next.left = curr.right = seg
+                    ray2 = self.ray(ans)
+                    curr.next.left = curr.right = ray2
 
                     # check for new circle events around the new arc
                     self.check_circle_event(curr)
@@ -250,12 +238,12 @@ class Voronoi:
         curr = self.BeachLine
         while curr.next is not None:
             curr = curr.next
-        curr.next = BeachLine(p, curr, None)
+        curr.next = BeachLine(point, curr, None)
         curr.balanceTree()
 
         # insert new segment between p and i
         x = -10
-        y = (curr.next.p.y + curr.p.y) / 2.0
+        y = (curr.next.point.y + curr.point.y) / 2.0
         first = Action(x, y, None, True)
 
         seg = Line(first)
@@ -268,10 +256,10 @@ class Voronoi:
             i.e.process = False
         i.e = None
 
-        if (i.prior is None) or (i.next is None) or CCW(i.prior.p, i.p, i.next.p):
+        if (i.prior is None) or (i.next is None) or CCW(i.prior.point, i.point, i.next.point):
             return
 
-        x, o = circle(i.prior.p, i.p, i.next.p)
+        x, o = circle(i.prior.point, i.point, i.next.point)
 
         i.e = Action(x, o, i, False)
         self.points.push(i.e)
@@ -280,6 +268,6 @@ class Voronoi:
         curr = self.BeachLine
         while curr is not None:
             if curr.right is not None and curr.next is not None:
-                p = intersection(curr.p, curr.next.p, -100)
+                p = intersection(curr.point, curr.next.point, -100)
                 curr.right.endpoint(p)
             curr = curr.next
